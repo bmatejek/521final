@@ -1,6 +1,11 @@
 # K-medoids algorithm based on Park & Jun's algorithm
 # From Clustering.jl library
 
+display_level(s::Symbol) =
+    s == :none ? 0 :
+    s == :final ? 1 :
+    s == :iter ? 2 :
+    error("Invalid value for the option 'display'.")
 
 #### interface functions
 
@@ -178,5 +183,3 @@ function _find_medoid(costs::DenseMatrix, grp::Vector{Int})
     p = indmin(sum(costs[grp, grp], 2))
     return grp[p]::Int
 end
-
-

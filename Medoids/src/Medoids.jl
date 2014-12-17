@@ -1,9 +1,7 @@
 module Medoids
     using Clustering
 
-    abstract ClusteringResult
-
-    type KmedoidsResult{T} <: ClusteringResult
+    type KmedoidsResult{T}
         medoids::Vector{Int}        # indices of methods (k)
         assignments::Vector{Int}    # assignments (n)
         acosts::Vector{T}           # costs of the resultant assignments (n)
@@ -14,29 +12,24 @@ module Medoids
     end
 
     export
-    # Implementation with clustering.jl
+    # Utilities
+    loadOrLib, randomInstance, testInstance,
+
+    # Implementation from clustering.jl
     parkJun, parkJun!,
 
-    charikar1998, charikar2012,
     # PAM
     pam,
 
-    #Linear Programs
-    buildLP
+    # Linear Programs
+    charikar1998, charikar2012, buildLP
 
 
-    # Include algorithms
+    # Source files
+    include("utils.jl")
     include("parkJun.jl")
     include("charikar1998.jl")
     include("charikar2012.jl")
     include("pam.jl")
     include("lp.jl")
-
-
-    # Bunch of stuff for the Clustering.jl library to work
-    display_level(s::Symbol) =
-        s == :none ? 0 :
-        s == :final ? 1 :
-        s == :iter ? 2 :
-        error("Invalid value for the option 'display'.")
 end
