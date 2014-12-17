@@ -1,9 +1,22 @@
 using Distances
+using Graphs
 include("./Medoids/src/Medoids.jl")
 
 # Load k-median problems in the OR-Library format
 function loadOrLib(name::String)
-    # TODO
+    f = open(name)
+    nv, ne, k = [int(v) for v in split(strip(readline(f)))]
+    costs = fill(typemax(Int32), nv, nv)
+    for ln in eachline(f)
+        ne -= 1
+        i, j, k = [int(v) for v in split(strip(ln))]
+        costs[i, j] = costs[j, i] = k
+    end
+    if ne > 0
+        println("$(ne) fewer lines than there should be")
+    end
+    floyd_warshall!(costs)
+    costs, k
 end
 
 # Generate random instance.  Based on Clustering.jl tests

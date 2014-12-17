@@ -19,7 +19,10 @@ module Medoids
 
     charikar1998, charikar2012,
     # PAM
-    pam
+    pam,
+
+    #Linear Programs
+    buildLP
 
 
     # Include algorithms
@@ -27,6 +30,7 @@ module Medoids
     include("charikar1998.jl")
     include("charikar2012.jl")
     include("pam.jl")
+    include("lp.jl")
 
 
     # Bunch of stuff for the Clustering.jl library to work
