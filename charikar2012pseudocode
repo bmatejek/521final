@@ -1,0 +1,269 @@
+////////////////////////////////////////////////
+// Point data structure 
+////////////////////////////////////////////////
+
+// features should be a vector of doubles 
+Point(vector<double> features) {
+	this.features = features;
+}
+
+// should take two points and return an L1 double distance
+double DistanceBetweenPointsL1(Point a, Point b) {
+	return |a - b|;
+}
+
+// should take two points and return an L2 double distance
+double DistanceBetweenPointsL2(Point a, Point b) {
+	return ||a - b||;
+}
+
+////////////////////////////////////////////////
+// Initialization of problem variables
+////////////////////////////////////////////////
+
+int k;				// total number of facilities that must be open
+Point *F[];			// set of possible facilities of which k are chosen for opening
+Point *C[];			// set of clients whose distances need to be minimized to the closest facility
+Point *X[];			// union of F and C -> for our purposes X = F = C
+int n;				// total number of elements in X (F U C)
+
+// initialize all points and import into sets
+X.add(all points);
+
+// make new instances of points in X and add to F and C
+F = C = X;
+
+double d[][] = new double[n][n]
+
+// initialize distance data structure (assuming here that X = F = C)
+for i in {1 .. n}
+	for j in {1 .. i}
+		d[i][j] = d[j][i] = DistanceBetweenPointsL2(X[i], X[j]);
+	end
+end
+
+////////////////////////////////////////////////
+// Solving the LP
+////////////////////////////////////////////////
+
+variables:
+x(n, n); 		// x is an n by n matrix
+y(n);			// y is a vector of length n
+
+min:
+// says that we want to minimize the distance from each facility to the set of clients who will use it
+for i in F
+	for j in C
+		d(i, j) * x(i, j);
+	end
+end
+
+constraints:
+// saying that for each client, the sum of facilities they use must equal 1
+for j in C
+	sum of i over F x_ij = 1
+end
+
+// saying that for each facility, a client cannot use it more than it exists
+for i in F
+	for j in C
+		x_ij <= y_i
+	end
+end
+
+// bounding the probabilities of a facility being used by a client
+for i in F
+	for j in C
+		0 <= x_ij <= 1
+	end
+end
+
+// bounding the probability of a given facility existing
+for i in F
+	0 <= y_i <= 1
+end
+
+// there can be no more than k facilities in total
+sum of i over {1 .. n} y_i <= k
+
+// sanity check: 
+// total number of variables = n^2 + n
+// total number of non bounding constraints = n^2 + n + 1
+// total number of lower/upper bounding constraints = 2(n^2 + n)
+
+////////////////////////////////////////////////
+// Preliminary variables for rounding scheme
+////////////////////////////////////////////////
+
+// remove all facilities i from C with y_i = 0
+C = C \ {y_i = 0}
+
+// define a new set of F set variables denoted as F_j
+// the elements in F_j are determined by all of the possible facilities i such that 
+// x_ij > 0
+// interpret this as the set of facilities that j has a non zero probability of belonging to
+
+F_j = {i in F : x_ij > 0}
+
+// the solution is denoted by (y, {F_j | j in C}) from now on --> really saying that
+// for all clients in j, F_j are the possible facilities j can belong to
+
+// define F' has any subset of F, we define a new function
+double function = vol(F' subset of F) {
+	return sum over i in F' y_i
+}
+
+// sanity check:
+// vol(F_j) = 1 for all j in C since F_j is the set of possible facilities that j can belong to 
+// y_j is the probability that a given facility exists. If the sum of the probabilities did not 
+// equal 1, then one client might not be assigned a facility.
+// We can assume vol(F) = k without loss of generality (might not however, but we can always create a solutiont
+// as good if this is the case (add another facility with 0 cost and 0 benefit))
+
+// define a new distance function d(j, F') -> (weighted) average distance from j to F' w.r.t. weights y
+// here y_i * d(j, i) is the sum of weighted distances if randomly assigning j to a facility in F'
+// vol(F') makes the sum an average weighted distance
+double function = d(j, F') {
+	return sum over i in F' (y_i * d(j, i)) / vol(F')
+}
+// in the previous function, it shouldn't matter in metric space but I think it should be d(i, j)
+// Also note, this is not a recursive function, the d is as defined above
+
+// define a new function dav(j) which is the average expected cost of assigning client j
+// randomly to one of the facilities in F_j (aka the fractional cost over the fractional solution)
+double function dav(j) {
+	return sum over i in F_j (y_i * d(i, j))
+}
+
+// compute dav(j) for all j and put in a sorted list
+DAV = for all j {j, dav(j)}
+DAV.sort(based on dav(j) from smallest to largest)
+
+// define a new function B that returns a set of facilities that have a distance strictly smaller than r for j
+double B(j, r) {
+	Set B = {}
+	for i in F
+		if (d(i, j) < r)
+			B.add(i)
+		end
+	end
+	return B
+}
+
+////////////////////////////////////////////////
+// Step 1: Filtering Phase
+////////////////////////////////////////////////
+
+// The end goal of this phase is to get a subset C' of C such that C' has two properties:
+// 		(1) clients in C' are far away from each other
+//		(2) a client not in C' is close to a client in C so that its cost is bounded in terms of the connecting to its neighbors in C'
+
+// initialization of C' and C''
+C' = {}
+C'' = C
+
+// select the clients j in C'' in order of min dav(j) (should be orderd in DAV)
+for j in DAV
+	// don't care about previously removed js
+	if j is not in C'' 
+		continue
+	end
+	// add j to C' (moves to Step 2)
+	C' = C' U j
+	for j' in C''
+		if (d(j, j') <= 4dav(j'))
+			// remove from C''
+			C'' = C''\j
+		end
+	end
+end
+
+// this basically is going through every possible client, if the average distance to its client
+// is small, it moves past the filtering phase. Any client who would incur a cost of less than 4
+// times its expected cost is bundled with the other client. The 4 is chosen for a Markov bound 
+// result later in the proof
+
+////////////////////////////////////////////////
+// Step 2: Bundling Phase
+////////////////////////////////////////////////
+
+// notation U_j are considered "bundles" --> the goal of a bundle is to restrict the number of 
+// facilities that are opened in ones bundle. Only one facility should be opened from each bundle
+// Step 1 restricted the number of clients to consider, step 2 restricts the number of facilities that
+// can be opened in a given region
+// U_j is defined for all clients j in C'
+
+// Define a variable R_j which is half the distance of j to its nearest neighbor in C'
+R = double[|C'|] // defined for all j in C'
+for j in C'
+	R[j] = 1/2 min j' in C', j' != j (d(j, j'));
+end
+
+// Define a new set of variables F'_j which is the intersection of F_j and B(j, 1.5R_j)
+// B(j, r) as defined above returns the set of facilities that are closer than r to j
+F'_j = F_j intersection with B(j, 1.5R_j)
+
+// worth noting here that Charikar thinks that different ratios other than 1.5 should perform
+// better. We might want to allow another variable to test this hypothesis. Apparently in theory 
+// infinity "should" work best but the analysis is too complex
+
+// A facility i which belongs to at least one F'_j is claimed by the nearest j in C' such 
+// that i in F'_j, breaking ties arbitrarily. U_j is a subset of F_j that is the set of 
+// facilities claimed by j <-- this is what is important to implement
+
+// The probability that one facility is open from U_j is vol(U_j). 
+
+// sanity checks:
+// Every element in U_j is in F_j. Every element that belongs to at least one F_j' is in one and only one U_j
+// 0.5 <= vol(U_j) <= 1 (this is proved in the paper)
+
+// Each bundle can be viewed as a single facility y = vol(U_j) that does not have a fixed position
+// Opening a bundle U_j refers to opening 1 facility randomly from U_j with probabilities y_i / vol(U_j)
+// Let me know if this section is unclear
+
+////////////////////////////////////////////////
+// Step 3: Matching Phase
+////////////////////////////////////////////////
+
+// This steps hopes to construct a matching M over the bundles (or equivalently over C')
+// If two bundles U_j and U_j' are matched, we sample them using a joint distribution
+// Each bundle has at least vol(U_j) of 1/2 , so for each bundlethe probability that something is opened between them
+// is 1. M is constructed using a greedy algorithm
+
+M = {} // data type are pairs of clients 
+
+for each pair of clients (j, j') in C' in order of closest distance to furthest
+	if j and j' are unmatched
+		M.add({j, j'})
+	end
+	if all clients in C' are matched
+		break
+	end
+end
+
+////////////////////////////////////////////////
+// Step 4: Sampling Phase
+////////////////////////////////////////////////
+
+for each pair (j, j') in M
+	With probability 1 - vol(U_j') open U_j
+	With probability 1 - vol(U_j) open U_j'
+	With probability vol(U_j) + vol(U_j') - 1, open both U_j and U_j'
+end
+
+// sanity check:
+// the following should only occur if |C'| % 2 == 1
+if some j in C' is not matched in M, open U_j randomly and independently with probability vol(U_j)
+for each facility i in no bundle U_j
+	open with probability y_i
+end
+
+// remember that opening is defined by opening one facility in a bundle based on an average weighting
+// after all opening, connect each client in C to its nearest facility. We open k facilities in expectation
+
+// apparently this only opens k in expectation but there is some proof that it opens k always?
+// sanity check: 
+// make sure it opens k facilities
+
+// if we meet with Charikar, I want to try to get the full paper or at least talk about Lemma 3 and how it
+// proves that the rounding scheme suffices or  how to change the scheme otherwise
