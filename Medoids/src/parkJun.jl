@@ -116,6 +116,8 @@ function _kmedoids!{T<:Real}(medoids::Vector{Int},      # initialized medoids
 
     # make output
     counts = Int[length(g) for g in groups]
+    medoids
+    #=
     KmedoidsResult{T}(
         medoids,
         assignments,
@@ -123,6 +125,7 @@ function _kmedoids!{T<:Real}(medoids::Vector{Int},      # initialized medoids
         counts,
         tcost,
         t, converged)
+    =#
 end
 
 

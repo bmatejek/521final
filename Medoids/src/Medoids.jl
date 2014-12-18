@@ -14,12 +14,16 @@ module Medoids
     export
     # Utilities
     loadOrLib, randomInstance, testInstance,
+    calculateCost,
 
     # Implementation from clustering.jl
     parkJun, parkJun!,
 
     # PAM
     pam,
+
+    # Greedy
+    forwardGreedy, backwardGreedy,
 
     # Linear Programs
     charikar1998, charikar2012, buildLP
@@ -28,6 +32,7 @@ module Medoids
     # Source files
     include("utils.jl")
     include("parkJun.jl")
+    include("greedy.jl")
     include("charikar1998.jl")
     include("charikar2012.jl")
     include("pam.jl")

@@ -2,6 +2,15 @@
 using Distances
 using Graphs
 
+#### Common methods in algorithms
+function calculateCost{T<:Real}(costs::DenseMatrix{T}, medoids::Array{Int})
+    distances = costs[medoids[1], :]
+    for m in medoids
+        distances = min(distances, costs[m, :])
+    end
+    sum(distances)
+end
+
 #### Load problem instances
 
 # Load k-median problems in the OR-Library format
@@ -42,11 +51,19 @@ end
 
 #### Running tests
 
-function testInstance(algorithm, costs, k, optimum::Int=-1)
-    result = algorithm(costs, k)
-    println("Medoids: $(result.medoids)")
-    println("Total cost: $(result.totalcost)")
+function testInstance(algorithms, costs, k, optimum::Int=-1)
+    println("Finding $(k) medoids...")
     if optimum > 0
         println("Optimum $(optimum)")
     end
+    for alg in algorithms
+        println("-----------------------")
+        println("Running $(methods(alg))...")
+        tic()
+        medoids = alg(costs, k)
+        toc()
+        println("Medoids: $(medoids)")
+        println("Total cost: $(calculateCost(costs, medoids))")
+    end
+    println("=======================")
 end
