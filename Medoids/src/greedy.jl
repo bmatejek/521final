@@ -1,5 +1,7 @@
 # Implementations of greedy k-median algorithms
 
+# Greedy algorith which repeatedly chooses the element that decreases the
+# cost the most until k elements are chosen.
 function forwardGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer)
     n = size(costs, 1)
     size(costs, 2) == n || error("costs must be a square matrix.")
@@ -15,7 +17,7 @@ function forwardGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer)
                 # distance improvement by adding i
                 gain = 0.0
                 for j = 1:n
-                    gain += max(closest[j] - costs[i, j], 0)
+                    gain += max(closest[j] - costs[j, i], 0)
                 end
                 if gain > best[2]
                     best = (i, gain)
@@ -29,6 +31,46 @@ function forwardGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer)
     medoids
 end
 
-function backwardGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer)
+# Algorith which starts with a every point as a medoid and removes the
+# point which increases the cost the least until there are k medoids
+function reverseGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer)
+    n = size(costs, 1)
+    size(costs, 2) == n || error("costs must be a square matrix.")
+    k <= n || error("Number of medoids should be less than n.")
 
+    medoids = Set(1:n)
+    # closest[i] = id of medoid closest to i
+    closest = [1:n]
+    # use[i] = set of ids with i as closest medoid
+    use = [Set(i) for i in 1:n]
+
+    while length(medoids) > k
+        # id, loss, new nearest medoid for each point in cluster
+        bestM = (0, typemax(Float32), [])
+        # Get medoid with smallest increase in objective when removed
+        for candidate = medoids
+            loss = 0.
+            newNearest = zeros(length(use[candidate]))
+            for (i, p) in enumerate(use[candidate])
+                # Get the new nearest for p
+                newM = (0, typemax(Float32))
+                for m in medoids
+                    if m != candidate
+                        cost = costs[m, p]
+                        if cost < newM[2]
+                            newM = (m, cost)
+                        end
+                    end
+                end
+                loss += newM[2] - costs[candidate, p]
+                newNearest[i] = candidate
+            end
+            if loss < bestM[2]
+                bestM = (candidate, loss, newNearest)
+            end
+        end
+        delete!(medoids, bestM[1])
+        closest[collect(use[bestM[1]])] = bestM[3] # Reassign clusters
+    end
+    collect(medoids)
 end
