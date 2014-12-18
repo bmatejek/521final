@@ -44,14 +44,13 @@ end
 # Naive reverse greedy implementation as a ground truth for testing
 # Recalculates complete cost for each removed medoid
 function _reverseGreedyNaive(costs, k)
-    medoids = Set{Int}(1:size(costs, 1))
-    curCost = calculateCost(costs, medoids)
+    medoids = IntSet(1:size(costs, 1))
     while length(medoids) > k
         bestM = (0, typemax(Float32))
         for m = medoids
-            loss = curCost - calculateCost(costs, setdiff(medoids, {m}))
-            if loss < bestM[2]
-                bestM = (m, loss)
+            cost = calculateCost(costs, setdiff(medoids, [m]))
+            if cost < bestM[2]
+                bestM = (m, cost)
             end
         end
         delete!(medoids, bestM[1])
