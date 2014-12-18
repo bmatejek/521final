@@ -6,14 +6,7 @@ function pam{T<:Real}(costs::DenseMatrix{T}, k::Integer)
     size(costs, 2) == n || error("costs must be a square matrix.")
     k <= n || error("Number of medoids should be less than n.")
 
-
-    KmedoidsResult{T}(
-        build(costs, k),
-        Int[],
-        Int[],
-        Int[],
-        0,
-        0, true)
+    build(costs, k)
 end
 
 # BUILD phase
@@ -84,44 +77,58 @@ end
 # consider all pairs of objects (i, h) for which object i is a medoid and h is not
 # determine effect on objective function when i is no longer a medoid and h is
 function swap()
-	for medoid in medoids
-		for point in non_medoid_points
-			# consider swapping point with a current medoid
-			# see what benefit this would produce
-			swap_value = 0
-			for j in non_medoid_points
-				c # INITIALIZE THIS!
-				if cluster_distances[j] < costs[j, medoid] && cluster_distances[j] < costs[j, point]
-					c = 0
-				elseif cluster_distances[j] == costs[j, medoid] # what happens when j loses its medoid
-					second_closest_medoid = -1
-					min_cost = typemax(Float64)
-					for other_medoid in medoids # find second closest representative object
-						if other_medoid != i
-							if (costs[j, other_medoid] < min_cost)
-								second_closest_medoid = other_medoid
-								min_cost = costs[j, other_medoid] # FINISH THIS!!!
+	while true
+
+		best_swap = -1, -1, typemax(Float64)
+		for medoid in medoids
+			for point in non_medoid_points
+				# consider swapping point with a current medoid
+				# see what benefit this would produce
+				swap_value = 0
+				for j in non_medoid_points
+					c # INITIALIZE THIS!
+					if cluster_distances[j] < costs[j, medoid] && cluster_distances[j] < costs[j, point]
+						c = 0
+					elseif cluster_distances[j] == costs[j, medoid] # what happens when j loses its medoid
+						second_closest_medoid = -1
+						min_cost = typemax(Float64)
+						for other_medoid in medoids # find second closest representative object
+							if other_medoid != i
+								if (costs[j, other_medoid] < min_cost)
+									second_closest_medoid = other_medoid
+									min_cost = costs[j, other_medoid] # FINISH THIS!!!
+								end
 							end
 						end
+						# second closest medoid is now correct
+						# two possibilities: j is closer to "point" than to the second_closest_medoid
+							# in this case: c = costs[j, point] - cluster_distances[j]
+						# otherwise, j is farther from "point" than the second_closest_medoid
+							# in this case: c = costs[j, second_closest_medoid] - cluster_distances[j]
+					elseif cluster_distances[j] > costs[j, point] # part c
+						c = costs[j, point] - cluster_distances[j]
 					end
-					# second closest medoid is now correct
-					# two possibilities: j is closer to "point" than to the second_closest_medoid
-						# in this case: c = costs[j, point] - cluster_distances[j]
-					# otherwise, j is farther from "point" than the second_closest_medoid
-						# in this case: c = costs[j, second_closest_medoid] - cluster_distances[j]
-				elseif cluster_distances[j] > costs[j, point] # part c
-					c = costs[j, point] - cluster_distances[j]
+
+					swap_value += c
+					_, _, best_val = best_swap
+					if swap_value < best_val
+						best_swap = medoid, point, swap_value
+					end
 				end
-
-				swap_value += c
 			end
-
-			# decide whether to make the swap
-
-
+		end
+		old_m, new_m, delta = best_swap
+		if delta < 0
+			delete!(medoids, old_m)
+			push!(non_medoid_points, old_m)
+			delete!(non_medoid_points, new_m)
+			push!(medoids, new_m)
 
 		end
+
 	end
+
+	medoids
 end
 
 
