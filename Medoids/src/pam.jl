@@ -72,14 +72,23 @@ function build{T<:Real}(costs::DenseMatrix{T}, k::Integer)
 	# this should build k medoids
 
 	# return initialization (k indices -- representing k medoids)
-	medoids, non_medoid_points, dist_to_medoid
+	medoids, non_medoid_points
 end
+
+# helper function for mapping -- TEST THIS!
+function compute_medoid_map(costs, medoids::Vector{Int})
+	map(i -> medoids_arr[indmin(map(j -> costs[i,j], medoids_arr))], 1:n)
+end
+
 
 # SWAP phase
 # consider all pairs of objects (i, h) for which object i is a medoid and h is not
 # determine effect on objective function when i is no longer a medoid and h is
-function swap(costs, medoids::Set{Int}, non_medoids::Set{Int}, dist_to_medoid)
-	# consider storing closest medoids instead of distances... and just do a lookup instead!
+function swap(costs, medoids::Set{Int}, non_medoids::Set{Int})
+	n = size(costs, 1)
+	# medoid_mapping[i] = medoid of point i
+	medoids_arr = collect(medoids)
+	medoid_mapping = map(i -> medoids_arr[indmin(map(j -> costs[i,j], medoids_arr))], 1:n)
 
 	while true
 
@@ -87,80 +96,28 @@ function swap(costs, medoids::Set{Int}, non_medoids::Set{Int}, dist_to_medoid)
 
 		for old_m in medoids
 			for new_m in non_medoids
-				# consider swapping point with a current old_m; see what benefit this would produce
 				swap_value = 0
-				for j in non_medoids
+				for j in non_medoids # MAKE SURE THE FOLLOWING CODE IS CORRECT!
+					m = medoid_mapping[j] # j's medoid
+					curr_cost = costs[j, m]
 					c = 0
-					#if dist_to_medoid[j] < costs[j, old_m] && dist_to_medoid[j] < costs[j, point]
-						#c = 0
-
-					# find the medoid of j! HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-					medoids_arr = collect(medoids)
-					m = medoids_arr[indmin(map(i -> costs[i,j], medoids_arr))] # find j's closest medoid
-
-					if old_m == m # j loses its medoid
-						medoids_arr = collect(delete!(medoids, m)) # medoids - m
-						next_closest_m = medoids_arr[indmin(map(i -> costs[i,j], medoids_arr))]
-
-						if costs[j, new_m] < costs[j, next_closest_m]
-							c = costs[j, new_m] - dist_to_medoid[j]
-						else
-							c = costs[j, next_closest_m] - dist_to_medoid[j]
-						end
-						# two possibilities: j is closer to "point" than to the second_closest_medoid
-							# in this case: c = costs[j, point] - dist_to_medoid[j]
-						# otherwise, j is farther from "point" than the second_closest_medoid
-							# in this case: c = costs[j, second_closest_medoid] - dist_to_medoid[j]
-					elseif costs[j, old_m] > dist_to_medoid[j] > costs[j, new_m] # part c
-						c = costs[j, new_m] - dist_to_medoid[j]
-					end
-
-
-					# TRY THIS INSTEAD
-					c = 0
-					if costs[j, new_m] < dist_to_medoid[j] # new medoid is closer to j
-						c = costs[j, new_m] - dist_to_medoid[j]
+					if costs[j, new_m] < curr_cost # new medoid is closer to j
+						c = costs[j, new_m] - curr_cost
 					elseif old_m == m # j's medoid is removed, must reassign j
 						medoids_arr = collect(delete!(medoids, m)) # medoids - m
 						next_closest_m = medoids_arr[indmin(map(i -> costs[i,j], medoids_arr))]
-						c = min(costs[j, new_m], costs[j, next_closest_m]) - dist_to_medoid[j]
+						c = min(costs[j, new_m], costs[j, next_closest_m]) - curr_cost
 					end
-
-
-
-
-					# j's current medoid is better
-
-
-
-
-
 					swap_value += c
-
 				end
 
-				# ADD to swap_value: removed old_m's contribution
+				# add old_m's contribution
+				medoids_arr = collect(delete!(medoids, old_m))
+				swap_value += min(costs[old_m, new_m], costs[old_m, medoids_arr[indmin(map(i -> costs[i,old_m], medoids_arr))]])
+				# CHECK THIS ^ move new_m into medoids_arr
 
-				removed_medoid_closest_medoid = -1
-				min_dist = typemax(Float64)
-				for m in medoids
-					if m != old_m && costs[old_m, m] < min_dist
-						removed_medoid_closest_medoid = m
-						min_dist = costs[old_m, m]
-					end
-				end
-
-				if costs[point, old_m] < min_dist
-					min_dist = costs[point, old_m]
-				end
-
-				swap_value += min_dist
-
-				# also subtract the contribution of the chosen point? might already be accounted for
-
-				_, _, best_val = best_swap
-				if swap_value < best_val
-					best_swap = medoid, point, swap_value
+				if swap_value < best_swap[3]
+					best_swap = old_m, new_m, swap_value
 				end
 			end
 		end
@@ -177,6 +134,8 @@ function swap(costs, medoids::Set{Int}, non_medoids::Set{Int}, dist_to_medoid)
 			println("STOP")
 			break
 		end
+
+		# other sanity checks... check that calculateCost in utils function before and after each swap is equal to delta
 
 	end
 

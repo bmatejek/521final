@@ -4,11 +4,20 @@ using Graphs
 
 #### Common methods in algorithms
 function calculateCost{T<:Real}(costs::DenseMatrix{T}, medoids::Array{Int})
-    distances = costs[medoids[1], :]
+    distances = costs[medoids[1], :] # Stef: would changing this to columns instead of rows speed it up?
     for m in medoids
         distances = min(distances, costs[m, :])
     end
     sum(distances)
+end
+
+function computeMedoidMap{T<:Real}(costs::DenseMatrix{T}, medoids::Vector{Int})
+    # check arguments
+    n = size(costs, 1)
+    size(costs, 2) == n || error("costs must be a square matrix.")
+    length(medoids) <= n || error("Number of medoids should be less than n.")
+
+    map(i -> medoids[indmin(map(j -> costs[i,j], medoids))], 1:n)
 end
 
 #### Load problem instances
