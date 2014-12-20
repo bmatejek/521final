@@ -4,9 +4,9 @@ using Graphs
 
 #### Common methods in algorithms
 function calculateCost{T<:Real}(costs::DenseMatrix{T}, medoids::Array{Int})
-    distances = costs[medoids[1], :] # Stef: would changing this to columns instead of rows speed it up?
+    distances = fill(typemax(Float64), size(costs, 1))
     for m in medoids
-        distances = min(distances, costs[m, :])
+        distances = min(distances, costs[:, m])
     end
     sum(distances)
 end
