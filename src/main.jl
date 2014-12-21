@@ -1,4 +1,4 @@
-include("./Medoids/src/Medoids.jl")
+require(joinpath(dirname(@__FILE__()), "Medoids.jl"))
 
 # Test parkJun alg on random instance and ORlib instance
 algs = [Medoids.parkJun, Medoids.forwardGreedy, Medoids.reverseGreedy, Medoids._reverseGreedyOpt]

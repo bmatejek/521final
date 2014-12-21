@@ -14,7 +14,7 @@ module Medoids
     export
     # Utilities
     loadOrLib, randomInstance, testInstance,
-    calculateCost, computeMedoidMap
+    calculateCost, computeMedoidMap,
 
     # Implementation from clustering.jl
     parkJun, parkJun!,

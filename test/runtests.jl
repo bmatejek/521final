@@ -1,6 +1,8 @@
+push!(LOAD_PATH,joinpath(dirname(@__FILE__()), "../src"))
+
 tests = ["utils", "pam"]
 
-println("Runing tests:")
+println("Running tests:")
 for t in tests
     fp = "$(t).jl"
     println("* $fp ...")

@@ -24,5 +24,3 @@ function isCorrectMapping{T<:Real}(costs::DenseMatrix{T}, medoids::Vector{Int}, 
 end
 
 @test isCorrectMapping(costs, medoids, computeMedoidMap(costs, medoids))
-
-
