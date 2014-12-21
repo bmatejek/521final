@@ -13,6 +13,3 @@ costs = pairwise(SqEuclidean(), X)
 
 # use this as an example: https://github.com/JuliaStats/Clustering.jl/blob/master/test/kmedoids.jl
 R = pam(costs, k)
-
-
-

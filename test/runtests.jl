@@ -1,5 +1,3 @@
-push!(LOAD_PATH,joinpath(dirname(@__FILE__()), "../src"))
-
 tests = ["utils", "pam"]
 
 println("Running tests:")
