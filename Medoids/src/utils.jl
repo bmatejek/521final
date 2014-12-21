@@ -52,6 +52,7 @@ end
 #### Running tests
 
 function testInstance(algorithms, costs, k, optimum::Int=-1)
+    results = Float64[]
     println("Finding $(k) medoids...")
     if optimum > 0
         println("Optimum $(optimum)")
@@ -62,8 +63,11 @@ function testInstance(algorithms, costs, k, optimum::Int=-1)
         tic()
         medoids = alg(costs, k)
         toc()
+        cost = calculateCost(costs, medoids)
         println("Medoids: $(medoids)")
-        println("Total cost: $(calculateCost(costs, medoids))")
+        println("Total cost: $(cost)")
+        push!(results, cost)
     end
     println("=======================")
+    results
 end

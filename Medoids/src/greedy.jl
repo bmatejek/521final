@@ -60,6 +60,7 @@ end
 
 # Currently broken - attempt at optimizing reverse greedy
 function _reverseGreedyOpt(costs, k)
+    n = size(costs, 1)
     medoids = Set(1:n)
     # closest[i] = id of medoid closest to i
     closest = [1:n]
