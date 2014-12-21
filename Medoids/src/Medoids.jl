@@ -23,7 +23,7 @@ module Medoids
     pam,
 
     # Greedy
-    forwardGreedy, reverseGreedy,
+    forwardGreedy, reverseGreedy, _reverseGreedyOpt,
 
     # Linear Programs
     charikar1998, charikar2012, buildLP
