@@ -33,12 +33,14 @@ end
 
 # Algorith which starts with a every point as a medoid and removes the
 # point which increases the cost the least until there are k medoids
-function reverseGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer)
+function reverseGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer, naive=false)
     n = size(costs, 1)
     size(costs, 2) == n || error("costs must be a square matrix.")
     k <= n || error("Number of medoids should be less than n.")
 
-    _reverseGreedyNaive(costs, k)
+    f = naive ? _reverseGreedyNaive : _reverseGreedyOpt
+
+    f(costs, k)
 end
 
 # Naive reverse greedy implementation as a ground truth for testing
@@ -58,10 +60,11 @@ function _reverseGreedyNaive(costs, k)
     collect(Int, medoids)
 end
 
-# Currently broken - attempt at optimizing reverse greedy
+# Optimize reverse greedy by keeping track of which points belong to each cluster
+# Results may differ slightly as a result of floating point errors
 function _reverseGreedyOpt(costs, k)
     n = size(costs, 1)
-    medoids = Set(1:n)
+    medoids = IntSet(1:n)
     # closest[i] = id of medoid closest to i
     closest = [1:n]
     # use[i] = set of ids with i as closest medoid
@@ -93,6 +96,8 @@ function _medoidToRemove(costs, medoids, closest, use)
 end
 
 function _removalLoss(costs, medoids, closest, use, candidate)
+    # Get loss and new assignments after removing candidate from medoid set
+    # Returns (loss, [new nearest for each member of cluster])
     loss = 0.
     newNearest = zeros(length(use[candidate]))
     for (i, p) in enumerate(use[candidate])
@@ -107,7 +112,7 @@ function _removalLoss(costs, medoids, closest, use, candidate)
             end
         end
         loss += newM[2] - costs[candidate, p]
-        newNearest[i] = candidate
+        newNearest[i] = newM[1]
     end
     (loss, newNearest)
 end
