@@ -75,14 +75,7 @@ function build{T<:Real}(costs::DenseMatrix{T}, k::Integer)
 	medoids, non_medoid_points
 end
 
-# helper function for mapping -- TEST THIS!
-function compute_medoid_map(costs, medoids::Vector{Int})
-	map(i -> medoids_arr[indmin(map(j -> costs[i,j], medoids_arr))], 1:n)
-end
-
-
 function calculateSwapValue(costs, medoids::Set{Int}, non_medoids::Set{Int}, old_medoid, new_medoid)
-	# I think moving the mapping solved the problem... try helper functions now!
 	n = size(costs, 1)
 	delta = 0
 	for point in non_medoids
@@ -97,32 +90,16 @@ function calculateSwapValue(costs, medoids::Set{Int}, non_medoids::Set{Int}, old
 		end
 	end
 
-	# add old_medoid's contribution
-	#updated_medoids_arr = [1:n][map(i -> (in(i, medoids) && i != old_medoid) || i == new_medoid, [1:n])]
+	# add old_medoid's contribution; to optimize, maybe filter over medoids and append new_medoid?
 	updated_medoids_arr = filter(i -> (in(i, medoids) && i != old_medoid) || i == new_medoid, [1:n])
-	# to optimize, maybe filter over medoids and append new_medoid?
-
-	#collect(push!(delete!(medoids, old_medoid), new_medoid))
-	#println(updated_medoids_arr)
 	
 	delta += minimum(map(i -> costs[i,old_medoid], updated_medoids_arr))
 end
-
 
 # SWAP phase
 # consider all pairs of objects (i, h) for which object i is a medoid and h is not
 # determine effect on objective function when i is no longer a medoid and h is
 function swap(costs, medoids::Set{Int}, non_medoids::Set{Int})
-	n = size(costs, 1)
-
-	println("n: $(n)")
-
-	# medoid_mapping[i] = medoid of point i
-	medoid_mapping = computeMedoidMap(costs, collect(medoids))
-
-	#println("medoids: $(medoids)")
-	#println("non_medoids: $(non_medoids)")
-
 	while true
 		best_swap = -1, -1, typemax(Float64)
 		for old_m in medoids
@@ -137,30 +114,13 @@ function swap(costs, medoids::Set{Int}, non_medoids::Set{Int})
 		old_m, new_m, delta = best_swap
 
 		if delta < 0
-			current_cost = calculateCost(costs, collect(Int, medoids))
-			#println("best_swap: $(best_swap)")
-			#println()
-			println("here: $(delta), $(medoids), $(old_m), $(non_medoids), $(new_m)")
 			delete!(medoids, old_m)
-			#println("medoids: $(medoids)")
-			#println()
 			push!(non_medoids, old_m)
 			delete!(non_medoids, new_m)
 			push!(medoids, new_m)
-			new_cost = calculateCost(costs, collect(Int, medoids))
-			println("actual delta: $(new_cost - current_cost)")
 		else
-			println("STOP")
 			break
 		end
-
-		# other sanity checks... check that calculateCost in utils function before and after each swap is equal to delta
-		# ^ DO THIS!!!
-		# (if it's supposedly going down at each round, I must not be calculating the swap_value correctly)
-
 	end
-
 	medoids
 end
-
-
