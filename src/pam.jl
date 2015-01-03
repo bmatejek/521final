@@ -81,41 +81,53 @@ function compute_medoid_map(costs, medoids::Vector{Int})
 end
 
 
+function calculateSwapValue(costs, medoids::Set{Int}, non_medoids::Set{Int}, old_medoid, new_medoid)
+	# I think moving the mapping solved the problem... try helper functions now!
+	n = size(costs, 1)
+	delta = 0
+	for point in non_medoids
+		m = collect(medoids)[indmin(map(i -> costs[i,point], collect(medoids)))]
+		curr_cost = costs[point, m]
+		if costs[point, new_medoid] < curr_cost # new medoid is closer to point
+			delta += costs[point, new_medoid] - curr_cost
+		elseif old_medoid == m # point's medoid is removed, must reassign point
+			updated_medoids_arr = filter(i -> in(i, medoids) && i != m, [1:n]) # medoids - m
+			second_closest_medoid = updated_medoids_arr[indmin(map(i -> costs[i,point], updated_medoids_arr))]
+			delta += min(costs[point, new_medoid], costs[point, second_closest_medoid]) - curr_cost
+		end
+	end
+
+	# add old_medoid's contribution
+	#updated_medoids_arr = [1:n][map(i -> (in(i, medoids) && i != old_medoid) || i == new_medoid, [1:n])]
+	updated_medoids_arr = filter(i -> (in(i, medoids) && i != old_medoid) || i == new_medoid, [1:n])
+	# to optimize, maybe filter over medoids and append new_medoid?
+
+	#collect(push!(delete!(medoids, old_medoid), new_medoid))
+	#println(updated_medoids_arr)
+	
+	delta += minimum(map(i -> costs[i,old_medoid], updated_medoids_arr))
+end
+
+
 # SWAP phase
 # consider all pairs of objects (i, h) for which object i is a medoid and h is not
 # determine effect on objective function when i is no longer a medoid and h is
 function swap(costs, medoids::Set{Int}, non_medoids::Set{Int})
 	n = size(costs, 1)
+
+	println("n: $(n)")
+
 	# medoid_mapping[i] = medoid of point i
-	medoids_arr = collect(medoids)
-	medoid_mapping = map(i -> medoids_arr[indmin(map(j -> costs[i,j], medoids_arr))], 1:n)
+	medoid_mapping = computeMedoidMap(costs, collect(medoids))
+
+	#println("medoids: $(medoids)")
+	#println("non_medoids: $(non_medoids)")
 
 	while true
-
 		best_swap = -1, -1, typemax(Float64)
-
 		for old_m in medoids
 			for new_m in non_medoids
-				swap_value = 0
-				for j in non_medoids # MAKE SURE THE FOLLOWING CODE IS CORRECT!
-					m = medoid_mapping[j] # j's medoid
-					curr_cost = costs[j, m]
-					c = 0
-					if costs[j, new_m] < curr_cost # new medoid is closer to j
-						c = costs[j, new_m] - curr_cost
-					elseif old_m == m # j's medoid is removed, must reassign j
-						medoids_arr = collect(delete!(medoids, m)) # medoids - m
-						next_closest_m = medoids_arr[indmin(map(i -> costs[i,j], medoids_arr))]
-						c = min(costs[j, new_m], costs[j, next_closest_m]) - curr_cost
-					end
-					swap_value += c
-				end
-
-				# add old_m's contribution
-				medoids_arr = collect(delete!(medoids, old_m))
-				swap_value += min(costs[old_m, new_m], costs[old_m, medoids_arr[indmin(map(i -> costs[i,old_m], medoids_arr))]])
-				# CHECK THIS ^ move new_m into medoids_arr
-
+				swap_value = calculateSwapValue(costs, medoids, non_medoids, old_m, new_m)
 				if swap_value < best_swap[3]
 					best_swap = old_m, new_m, swap_value
 				end
@@ -125,17 +137,26 @@ function swap(costs, medoids::Set{Int}, non_medoids::Set{Int})
 		old_m, new_m, delta = best_swap
 
 		if delta < 0
-			println("here: $(delta), $(medoids), $(old_m), $(non_medoid_points), $(new_m)")
+			current_cost = calculateCost(costs, collect(Int, medoids))
+			#println("best_swap: $(best_swap)")
+			#println()
+			println("here: $(delta), $(medoids), $(old_m), $(non_medoids), $(new_m)")
 			delete!(medoids, old_m)
-			push!(non_medoid_points, old_m)
-			delete!(non_medoid_points, new_m)
+			#println("medoids: $(medoids)")
+			#println()
+			push!(non_medoids, old_m)
+			delete!(non_medoids, new_m)
 			push!(medoids, new_m)
+			new_cost = calculateCost(costs, collect(Int, medoids))
+			println("actual delta: $(new_cost - current_cost)")
 		else
 			println("STOP")
 			break
 		end
 
 		# other sanity checks... check that calculateCost in utils function before and after each swap is equal to delta
+		# ^ DO THIS!!!
+		# (if it's supposedly going down at each round, I must not be calculating the swap_value correctly)
 
 	end
 

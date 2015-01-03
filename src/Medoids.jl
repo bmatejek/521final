@@ -20,7 +20,7 @@ module Medoids
     parkJun, parkJun!,
 
     # PAM
-    pam,
+    pam, calculateSwapValue,
 
     # Greedy
     forwardGreedy, reverseGreedy, _reverseGreedyOpt,
