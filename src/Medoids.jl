@@ -1,15 +1,4 @@
 module Medoids
-    using Clustering
-
-    type KmedoidsResult{T}
-        medoids::Vector{Int}        # indices of methods (k)
-        assignments::Vector{Int}    # assignments (n)
-        acosts::Vector{T}           # costs of the resultant assignments (n)
-        counts::Vector{Int}         # number of samples assigned to each cluster (k)
-        totalcost::Float64          # total assignment cost (i.e. objective) (k)
-        iterations::Int             # number of elapsed iterations
-        converged::Bool             # whether the procedure converged
-    end
 
     export
     # Utilities

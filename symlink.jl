@@ -1,4 +1,4 @@
 target = Pkg.dir("Medoids")
 source = pwd()
-print("ln -s $(source) $(target)")
+println("ln -s $(source) $(target)")
 run(`ln -s $(source) $(target)`)
