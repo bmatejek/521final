@@ -6,9 +6,7 @@ function pam{T<:Real}(costs::DenseMatrix{T}, k::Integer)
     size(costs, 2) == n || error("costs must be a square matrix.")
     k <= n || error("Number of medoids should be less than n.")
 
-    println(typeof(swap(costs, build(costs, k)...)))
-
-	collect(swap(costs, build(costs, k)...))
+    collect(swap(costs, build(costs, k)...))
 end
 
 # BUILD phase
