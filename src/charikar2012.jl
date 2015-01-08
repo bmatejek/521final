@@ -1,4 +1,3 @@
-# K-medoids algorithm based on Charikar's 2012 LP rounding scheme
 ###############################################################
 ## Needed packages
 ###############################################################
@@ -17,9 +16,11 @@ type Match
     d
 end
 
+# K-medoids algorithm based on Charikar's 2012 LP rounding scheme
 function charikar2012{T<:Real}(d::DenseMatrix{T}, k::Integer)
     charikar2012Variable(d, k, 1.5);
 end
+
 
 function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Float64)
     # check arguments
@@ -37,45 +38,12 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	get!(X, i, xi);
     end
 
-    # return the manhattan distance between DataPoints a and b
-    # function manhattandistance(xi::DataPoint, xj::DataPoint)
-    #	size(xi.coordinates) == size(xj.coordinates) || error("$xi and $xj must have the same dimension for L1 distances")
-    #	sum(abs(xi.coordinates - xj.coordinates))	
-    # end
-    
-    # return the euclidean distance between DataPoints a and b
-    # function euclideandistance(xi::DataPoint, xj::DataPoint)
-    #	size(xi.coordinates) == size(xj.coordinates) || error("$a and $b must have the same dimension for L2 distances")
-    #	sqrt(sum((xi.coordinates - xj.coordinates) .^ 2))
-    # end
-    
-    # n = 5			# n is the number of points
-    # k = 2			# k is the number of cluster centers
-    
-    # x1 = DataPoint([17 23 4 10 11]);
-    # x2 = DataPoint([24 5 6 12 18]);
-    # x3 = DataPoint([1 7 13 19 25]);
-    # x4 = DataPoint([8 14 20 21 2]);
-    # x5 = DataPoint([15 16 22 3 9]);
-    
-    
-    # X = [1=>x1, 2=>x2, 3=>x3, 4=>x4, 5=>x5];
-    
     # for the k-medians problem, F = C = X, deepcopy used to protect elements
     F = deepcopy(X);
     C = deepcopy(X);
 
-    # create the original n x n distance matrix
-    # for d_ij, i is the facility and j is the client
-    # d = zeros(Float64, (length(F), length(C)));
-    # for i=1:length(F)
-    #	for j=1:length(C)
-    #		d[i, j] = euclideandistance(get(F, i, DataPoint(0)), get(C, j, DataPoint(0)))
-    #	end
-    # end
-
     # Print the LP variables
-    if (DEBUG)
+    if (false)
 	println("\n#################################################");
 	print("Initialized Variables");
 	println("\n#################################################\n");
@@ -136,16 +104,14 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     @addConstraint(m, sum{y[i], i=1:length(F)} <= k)
     
     # set the objective as minimizing the total cost for each client over the facilities they fractionally use
-    tic();
     @setObjective(m, Min, sum{d[i, j] * x[i, j], i=1:length(F), j=1:length(C)})
-    solve(m)
+    solve(m);
     # amount of time to solve LP
-    toc();
-
+    
     x = getValue(x)
     y = getValue(y)
     
-    if (DEBUG)
+    if (false)
 	println("\n#################################################");
 	print("LP Solution");
 	println("\n#################################################\n");
@@ -171,12 +137,21 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     ###############################################################
     ## Preliminary variables for rounding scheme
     ###############################################################
-    
+
     # remove all facilities i from C with y_i = 0
     for i in keys(C)
 	if (y[i] == 0.0) 
 	    delete!(C, i);
-	end
+        end
+    end
+
+    keepF = Array(Bool, length(F));
+    for i in keys(F)
+        #if (y[i] == 0.0)
+        #    keepF[i] = false;
+        #else
+        keepF[i] = true;
+        #end
     end
     
     # define a new set of F set variables denoted as F_j
@@ -186,11 +161,12 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     for j in keys(C)
 	Fj = Dict{Int32, DataPoint}();
 	for i in keys(F)
+            if (!keepF[i]) continue; end;
 	    if (x[i, j] > 0.0) 
-		get!(Fj, i, F[i]);
-	    end
+		Fj[i] = F[i];
+            end
 	end
-	get!(F_, j, Fj);
+        F_[j] = Fj
     end
     
     # F_ is just a temporary variable, reassign F to another variable name
@@ -229,8 +205,8 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	Bjr = Dict{Int32, DataPoint}();
 	for i in keys(F)
 	    if (d[i, j] < r)
-		get!(Bjr, i, xF[i]);
-	    end
+		Bjr[i] = xF[i];
+            end
 	end
 	return Bjr;
     end
@@ -290,16 +266,25 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     DAV = Dict{Int32, Float64}();
     for i in keys(C)
 	davVal = dav(i);
-	if (i == 2) davVal = 1.0; end;
-	get!(DAV, i, davVal);
+        DAV[i] = davVal;
     end
     
-    for j in sort(collect(keys(DAV)))
-	# only consider j still in C''
+    # really ugly, but no way to get sorted value key pairs
+    hack_array = Array(Bool, length(xF));
+    for i=1:length(hack_array)
+        hack_array[i] = false;
+    end
+    for val in sort(collect(values(DAV)))
+        j = 0;
+        for hack in sort(collect(keys(DAV)))
+            if (DAV[hack] == val && !hack_array[hack]) hack_array[hack] = true; j = hack; break; end;
+        end        
+        if (j == 0) println("Error with hack around line 277\n"); return; end;
+        # only consider j still in C''
 	if (get(Cpp, j, 0) != 0)
 	    # add j to C'
-	    get!(Cp, j, Cpp[j]);
-	    for jp in keys(Cpp)
+	    Cp[j] = Cpp[j];
+            for jp in keys(Cpp)
 		if (d[j, jp] <= 4 * dav(jp))
 		    delete!(Cpp, jp);
 		end
@@ -335,7 +320,7 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     # each client j in C' should be assigned a set of facilities in large volume
     U = Dict{Int32, Dict{Int32, DataPoint}}();
     for j in keys(Cp)
-	get!(U, j, Dict{Int32, DataPoint}());
+	U[j] = Dict{Int32, DataPoint}();
     end
     
     # R is half the distance of j to its nearest neighbor in C'
@@ -348,7 +333,7 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 		min = d[j, jp];
 	    end
 	end
-	get!(R, j, 0.5 * min);
+        R[j] = 0.5 * min;
     end
     
     # get Fj' for each j in Cp
@@ -362,12 +347,15 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	Fpj = Dict{Int32, DataPoint}();
 	for i in keys(Fj)
 	    if (get(Bj, i, 0) != 0)
-		get!(Fpj, i, get(Bj, i, 0));
-		get!(FAll, i, get(Bj, i, 0));
+		Fpj[i] = Bj[i];
+                FAll[i] = Bj[i];
+                #get!(Fpj, i, get(Bj, i, 0));
+		#get!(FAll, i, get(Bj, i, 0));
 	    end
 	end
 	# add this intersection to F'
-	get!(Fp, j, Fpj);
+        Fp[j] = Fpj;
+	#get!(Fp, j, Fpj);
     end
     
     # go through all facilities to see if they belong to a F'
@@ -480,7 +468,8 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	if (matched[j] || matched[jp]) continue; end;
 	matched[j] = true;
 	matched[jp] = true;
-	get!(M, count, Mp[i]);
+	M[count] = Mp[i];
+        # get!(M, count, Mp[i]);
 	count += 1;
     end
     
@@ -488,7 +477,8 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     for i=1:length(matched)
 	if (!matched[i])
 	    M1 = Match(i, 0, 0);
-	    get!(M, count + 1, M1);
+            M[count+1] = M1;
+	    #get!(M, count + 1, M1);
 	end
     end
     
