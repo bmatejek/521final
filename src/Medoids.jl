@@ -26,14 +26,12 @@ module Medoids
     forwardGreedy, reverseGreedy, _reverseGreedyOpt,
 
     # Linear Programs
-    charikar1998, charikar2012, buildLP
-
-
+    charikar2012Variable, charikar2012
+    
     # Source files
     include("utils.jl")
     include("parkJun.jl")
     include("greedy.jl")
-    include("charikar1998.jl")
     include("charikar2012.jl")
     include("pam.jl")
     include("lp.jl")
