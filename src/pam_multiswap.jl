@@ -97,21 +97,30 @@ end
 # SWAP phase
 # consider all pairs of objects (i, h) for which object i is a medoid and h is not
 # determine effect on objective function when i is no longer a medoid and h is
-function swap(costs, medoids::Set{Int}, non_medoids::Set{Int}, p::Int)
+function swap(costs, orig_medoids::Set{Int}, orig_non_medoids::Set{Int}, P::Int)
 	while true
-		best_swap = -1, -1, typemax(Float64)
-		for old_m in medoids
-			for new_m in non_medoids
-				swap_value = calculateSwapValue(costs, medoids, non_medoids, old_m, new_m)
-				if swap_value < best_swap[3]
-					best_swap = old_m, new_m, swap_value
+		best_swap = [], [], typemax(Float64)
+		for p = 1:P
+			for medoid_set in combinations(orig_medoids, p)
+				for new_medoid_set in combinations(orig_non_medoids, p)
+					medoids = deepcopy(orig_medoids)
+					non_medoids = deepcopy(orig_non_medoids)
+					swap_value = 0
+					for i = 1:P
+						# fix this!
+						swap_value += calculateSwapValue(costs, medoids, non_medoids, medoid_set[i], new_medoid_set[i])
+						if swap_value < best_swap[3]
+							best_swap = medoid_set, new_medoid_set, swap_value
+						end
+					end
 				end
 			end
 		end
 
-		old_m, new_m, delta = best_swap
+		medoid_set, new_medoid_set, delta = best_swap
 
 		if delta < 0
+			# fix this!
 			delete!(medoids, old_m)
 			push!(non_medoids, old_m)
 			delete!(non_medoids, new_m)
