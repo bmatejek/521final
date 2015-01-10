@@ -9,7 +9,7 @@ module Medoids
     parkJun, parkJun!,
 
     # PAM
-    pam, calculateSwapValue,
+    pam, calculateSwapValue, pamMultiswap,
 
     # Greedy
     forwardGreedy, reverseGreedy, _reverseGreedyOpt,
@@ -28,4 +28,5 @@ module Medoids
     include("pam.jl")
     include("lp.jl")
     include("jv_v1.jl")
+    include("pam_multiswap.jl")
 end

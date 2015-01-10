@@ -1,6 +1,6 @@
 # K-medoids implementation based on the commonly used PAM algorithm (Kaufman's original algorithm)
 
-function pam{T<:Real}(costs::DenseMatrix{T}, k::Integer)
+function pamMultiswap{T<:Real}(costs::DenseMatrix{T}, k::Integer)
     # check arguments
     n = size(costs, 1)
     size(costs, 2) == n || error("costs must be a square matrix.")
@@ -107,11 +107,14 @@ function swap(costs, orig_medoids::Set{Int}, orig_non_medoids::Set{Int}, P::Int)
 					non_medoids = deepcopy(orig_non_medoids)
 					swap_value = 0
 					for i = 1:P
-						# fix this!
 						swap_value += calculateSwapValue(costs, medoids, non_medoids, medoid_set[i], new_medoid_set[i])
-						if swap_value < best_swap[3]
-							best_swap = medoid_set, new_medoid_set, swap_value
-						end
+						delete!(medoids, medoid_set[i])
+						push!(non_medoids, medoid_set[i])
+						delete!(non_medoids, new_medoid_set[i])
+						push!(medoids, new_medoid_set[i])
+					end
+					if swap_value < best_swap[3]
+						best_swap = medoid_set, new_medoid_set, swap_value
 					end
 				end
 			end
@@ -120,14 +123,15 @@ function swap(costs, orig_medoids::Set{Int}, orig_non_medoids::Set{Int}, P::Int)
 		medoid_set, new_medoid_set, delta = best_swap
 
 		if delta < 0
-			# fix this!
-			delete!(medoids, old_m)
-			push!(non_medoids, old_m)
-			delete!(non_medoids, new_m)
-			push!(medoids, new_m)
+			for i in 1:length(medoid_set)
+				delete!(orig_medoids, medoid_set[i])
+				push!(orig_non_medoids, medoid_set[i])
+				delete!(orig_non_medoids, new_medoid_set[i])
+				push!(orig_medoids, new_medoid_set[i])
+			end
 		else
 			break
 		end
 	end
-	medoids
+	orig_medoids
 end
