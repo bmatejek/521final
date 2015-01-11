@@ -59,7 +59,7 @@ function build{T<:Real}(costs::DenseMatrix{T}, k::Integer)
 			end
 		end
 		push!(medoids, min_next_medoid)
-		for j in 1:nf
+		for j in 1:nc
 			if (costs[min_next_medoid, j] < dist_to_medoid[j])
 				dist_to_medoid[j] = costs[min_next_medoid, j]
 			end
@@ -92,7 +92,7 @@ function calculateSwapValue(costs, medoids::Set{Int}, non_medoids::Set{Int}, old
 	# I THINK THESE LINES ARE NO LONGER NECESSARY!
 	#updated_medoids_arr = filter(i -> (in(i, medoids) && i != old_medoid) || i == new_medoid, [1:nf])
 	#delta += minimum(map(j -> costs[old_medoid, j], updated_medoids_arr))
-	
+
 	delta
 end
 
