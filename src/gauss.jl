@@ -103,3 +103,9 @@ medoids = Medoids.reverseGreedyBrian(costs, k);
 cost = calculateCost(costs, medoids);
 println("Reverse Greedy: ", cost);
 toc();
+
+tic()
+medoids = Medoids.pam(costs, k);
+cost = calculateCost(costs, medoids);
+println("PAM: ", cost);
+toc();
