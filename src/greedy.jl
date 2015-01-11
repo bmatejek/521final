@@ -31,6 +31,35 @@ function forwardGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer)
     medoids
 end
 
+function forwardGreedyBrian{T<:Real}(costs::DenseMatrix{T}, k::Integer)
+    nf, nc = size(costs);
+    k <= nf || error("Number of medoids should be less than nf");
+    
+    start = indmin(sum(costs, 2));                    # Index of min sum row
+    closest = costs[start, :];                        # Distance from i to closest medoid
+    medoids = Int64[start];                           # Current medoid set
+    while length(medoids) < k
+        best = (0, 0.) # (next id, improvement)
+        for i in 1:nf
+            if !(i in medoids)
+                # distance improvement by adding i
+                gain = 0.0
+                for j = 1:nc
+                    gain += max(closest[j] - costs[i, j], 0)
+                end
+                if gain > best[2]
+
+                    best = (i, gain)
+                end
+            end
+        end
+        best[1] > 0 || error("Error finding medoid to add")
+        push!(medoids, best[1])
+        closest = min(closest, costs[best[1], :])
+    end
+    medoids
+end
+
 # Algorith which starts with a every point as a medoid and removes the
 # point which increases the cost the least until there are k medoids
 function reverseGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer, naive=false)
@@ -41,6 +70,32 @@ function reverseGreedy{T<:Real}(costs::DenseMatrix{T}, k::Integer, naive=false)
     f = naive ? _reverseGreedyNaive : _reverseGreedyOpt
 
     f(costs, k)
+end
+
+function reverseGreedyBrianCalculateCost{T<:Real}(costs::DenseMatrix{T}, medoids::Array{Int})
+    distances = fill(typemax(Float64), size(costs, 2));
+    for m in medoids
+        distances = min(distances, transpose(costs[m,:]))
+    end
+    sum(distances)
+end;
+
+function reverseGreedyBrian{T<:Real}(costs::DenseMatrix{T}, k::Integer)
+    nf, nc = size(costs);
+    k <= nf || error("Number of medoids should be less than n")
+    
+    medoids = IntSet(1:nf)
+    while length(medoids) > k
+        bestM = (0, typemax(Float32))
+        for m = medoids
+            cost = reverseGreedyBrianCalculateCost(costs, setdiff(medoids, [m]))
+            if cost < bestM[2]
+                bestM = (m, cost)
+            end
+        end
+        delete!(medoids, bestM[1])
+    end
+    collect(Int, medoids);
 end
 
 # Naive reverse greedy implementation as a ground truth for testing

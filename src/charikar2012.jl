@@ -16,41 +16,42 @@ type Match
     d
 end
 
-# K-medoids algorithm based on Charikar's 2012 LP rounding scheme
 function charikar2012{T<:Real}(d::DenseMatrix{T}, k::Integer)
-    charikar2012Variable(d, k, 1.5);
+    charikar2012Variable(d, k, 1.5, d);
+end
+
+# K-medoids algorithm based on Charikar's 2012 LP rounding scheme
+function charikar2012{T<:Real}(d::DenseMatrix{T}, k::Integer, dc::DenseMatrix{T})
+    charikar2012Variable(d, k, 1.5, dc);
 end
 
 
-function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Float64)
+function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Float64, dC::DenseMatrix{T})
     # check arguments
-    n = size(d, 1);
-    size(d, 2) == n || error("costs must be a square matrix.");
-    k <= n || error("Number of medoids should be less than n.");
-
+    nf, nc = size(d);
+    k <= nf || error("Number of medoids should be less than the number of faciliites.");
+    
     ###############################################################
     ## Initialization of problem variables
     ###############################################################
     DEBUG = false;
-    X = Dict{Int32, DataPoint}();
-    for i=1:n
-	xi = DataPoint(i);
-	get!(X, i, xi);
+    F = Dict{Int32, DataPoint}();
+    C = Dict{Int32, DataPoint}();
+    for i=1:nf
+	fi = DataPoint(i);
+	get!(F, i, fi);
     end
-
-    # for the k-medians problem, F = C = X, deepcopy used to protect elements
-    F = deepcopy(X);
-    C = deepcopy(X);
+    
+    for i=1:nc
+        ci = DataPoint(i);
+        get!(C, i, ci);
+    end
 
     # Print the LP variables
     if (false)
 	println("\n#################################################");
 	print("Initialized Variables");
 	println("\n#################################################\n");
-	println("X: \n");
-	for key in sort(collect(keys(X)))
-	    println("$key $(X[key])\n");
-	end
 	println("F: \n");
 	for key in sort(collect(keys(F)))
 	    println("$key $(F[key])\n");
@@ -108,9 +109,11 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     solve(m);
     # amount of time to solve LP
     
-    x = getValue(x)
-    y = getValue(y)
-    
+    x = getValue(x);
+    y = getValue(y);
+
+    println("LP Optimal Value: ", getObjectiveValue(m));
+
     if (false)
 	println("\n#################################################");
 	print("LP Solution");
@@ -138,20 +141,13 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     ## Preliminary variables for rounding scheme
     ###############################################################
 
-    # remove all facilities i from C with y_i = 0
-    for i in keys(C)
-	if (y[i] == 0.0) 
-	    delete!(C, i);
-        end
-    end
-
     keepF = Array(Bool, length(F));
     for i in keys(F)
-        #if (y[i] == 0.0)
-        #    keepF[i] = false;
-        #else
-        keepF[i] = true;
-        #end
+        if (y[i] == 0.0)
+            keepF[i] = false;
+        else
+            keepF[i] = true;
+        end
     end
     
     # define a new set of F set variables denoted as F_j
@@ -186,7 +182,7 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     function dist(j::Int32, Fp::Dict{Int32, DataPoint}) 
 	sum = 0;
 	for i in keys(Fp)
-	    sum += y[i] * d[j, i];
+	    sum += y[i] * d[i, j];
 	end
 	return sum / vol(Fp);
     end
@@ -203,8 +199,9 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     # the set of facilities that have a distance strictly smaller than r to j
     function B(j::Int32, r::Float64)
 	Bjr = Dict{Int32, DataPoint}();
-	for i in keys(F)
-	    if (d[i, j] < r)
+	for i in keys(xF)
+	    if (!keepF[i]) continue; end;
+            if (d[i, j] < r)
 		Bjr[i] = xF[i];
             end
 	end
@@ -227,10 +224,10 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	    end
 	end
         
-	println("All these volumes should be 1.0");
+	println("All these volumes should >= 1.0");
 	for key in sort(collect(keys(F)))
 	    println("vol(F[$key]): $(vol(F[key]))");
-	    if (vol(F[key]) != 1.0)
+	    if (vol(F[key]) < 1.0)
 		println("Error");
 		return;
 	    end
@@ -243,15 +240,15 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	println("\nThe set of facilities whose distance to j is less than 10.0");
 	for j in sort(collect(keys(C)))
 	    Bj = B(j, 10.0);
-	    println("$j:");
+            println("$j:");
 	    for i in sort(collect(keys(Bj)))
 		@printf "%d %6f\n" i (d[i, j]);
 		if (d[i, j] > 10.0) 
 		    println("Error");
 		    return;
-		end
+                end
 	    end
-	    println();
+            println();
 	end
     end
     
@@ -285,7 +282,7 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	    # add j to C'
 	    Cp[j] = Cpp[j];
             for jp in keys(Cpp)
-		if (d[j, jp] <= 4 * dav(jp))
+		if (dC[j, jp] <= 4 * dav(jp))
 		    delete!(Cpp, jp);
 		end
 	    end
@@ -329,8 +326,8 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	min = typemax(Float64);
 	for jp in keys(Cp)
 	    if (j == jp) continue; end;
-	    if (d[j, jp] < min)
-		min = d[j, jp];
+	    if (dC[j, jp] < min)
+		min = dC[j, jp];
 	    end
 	end
         R[j] = 0.5 * min;
@@ -349,13 +346,10 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	    if (get(Bj, i, 0) != 0)
 		Fpj[i] = Bj[i];
                 FAll[i] = Bj[i];
-                #get!(Fpj, i, get(Bj, i, 0));
-		#get!(FAll, i, get(Bj, i, 0));
-	    end
+            end
 	end
 	# add this intersection to F'
         Fp[j] = Fpj;
-	#get!(Fp, j, Fpj);
     end
     
     # go through all facilities to see if they belong to a F'
@@ -439,7 +433,7 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     for j in keys(Cp)
 	for jp in keys(Cp)
 	    if (j <= jp) continue; end;
-	    Mjjp = Match(j, jp, d[j, jp]);
+	    Mjjp = Match(j, jp, dC[j, jp]);
 	    Mp[count] = Mjjp;
 	    count += 1;
 	end
@@ -454,7 +448,7 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     sort!(Mp, lt=MSort, alg=QuickSort);
     
     # make sure everything is only in one match
-    matched = Array(Bool, length(X));
+    matched = Array(Bool, nc);
     for i=1:length(matched)
 	if (get(Cp, i, 0) == 0) matched[i] = true;
 	else matched[i] = false; end;
@@ -469,8 +463,7 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	matched[j] = true;
 	matched[jp] = true;
 	M[count] = Mp[i];
-        # get!(M, count, Mp[i]);
-	count += 1;
+        count += 1;
     end
     
     # see if there is anything left out of M
@@ -478,7 +471,6 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	if (!matched[i])
 	    M1 = Match(i, 0, 0);
             M[count+1] = M1;
-	    #get!(M, count + 1, M1);
 	end
     end
     
@@ -501,6 +493,17 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
     ## Sampling Phase
     ###############################################################
     
+    function randSet(Uj)
+        rnd = rand(1:length(Uj))
+        i = 1;
+        for fj in sort(collect(keys(Uj)))
+            if (i == rnd)
+                return fj;
+            end
+            i += 1
+        end
+    end
+
     # Create list of empty facilities
     kOpen = Array(Bool, length(xF));
     while (true) 
@@ -521,19 +524,23 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 		volUjp = vol(U[jp]);
 
 		rnd = rand();
-		if (rnd < 1 - volUjp) num_open += 1; kOpen[j] = true;
-		elseif (rnd < (1 - volUjp) + (1 - volUj)) num_open += 1; kOpen[jp] = true;
+		if (rnd < 1 - volUjp) 
+                    num_open += 1;
+                    kOpen[randSet(U[j])] = true;
+		elseif (rnd < (1 - volUjp) + (1 - volUj)) 
+                    num_open += 1; 
+                    kOpen[randSet(U[jp])] = true;
 		else
-		    kOpen[j] = true;
-		    kOpen[jp] = true;
-		    num_open += 2;
+                    num_open += 2;
+                    kOpen[randSet(U[j])] = true;
+		    kOpen[randSet(U[jp])] = true;
 		end
 	    else
 		rnd = rand();
 		if (get(U, j, 0) == 0) println("Error, $j not in U"); return; end;
 		if (rnd < vol(U[j]))
-		    kOpen[j] = true;
-		    num_open += 1;
+                    num_open += 1;                    
+                    kOpen[randSet(U[j])] = true;
 		end
 	    end
 	end
@@ -547,6 +554,7 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 		num_open += 1;
 	    end
 	end
+        #println(num_open);
 	if (num_open == k) break; end;
     end
     
