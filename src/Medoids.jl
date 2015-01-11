@@ -30,6 +30,6 @@ module Medoids
     include("charikar2012.jl")
     include("pam.jl")
     include("lp.jl")
-    include("jv_v1.jl")
+    include("jv.jl")
     include("pam_multiswap.jl")
 end

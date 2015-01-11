@@ -16,6 +16,15 @@ type Match
     d
 end
 
+function calculateCost{T<:Real}(costs::DenseMatrix{T}, medoids::Array{Int})
+    distances = fill(typemax(Float64), size(costs, 2));
+    for m in medoids
+        distances = min(distances, transpose(costs[m,:]));
+    end
+    sum(distances)
+end
+
+
 function charikar2012{T<:Real}(d::DenseMatrix{T}, k::Integer)
     charikar2012Variable(d, k, 1.5, d);
 end
@@ -27,6 +36,7 @@ end
 
 
 function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Float64, dC::DenseMatrix{T})
+    tic();
     # check arguments
     nf, nc = size(d);
     k <= nf || error("Number of medoids should be less than the number of faciliites.");
@@ -506,56 +516,79 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 
     # Create list of empty facilities
     kOpen = Array(Bool, length(xF));
-    while (true) 
-	num_open = 0;
-	for i=1:length(xF)
-	    kOpen[i] = false;
-	end	   
-        
-	for key in sort(collect(keys(M)))
-	    Mp = M[key];
-	    j = Mp.j;
-	    jp = Mp.jp;
-	    if (Mp.jp != 0) 
-		if (get(U, j, 0) == 0) println("Error, $j not in U"); return; end;
-		if (get(U, jp, 0) == 0) println("Error, $jp not in U"); return; end;
-
-		volUj = vol(U[j]);
-		volUjp = vol(U[jp]);
-
-		rnd = rand();
-		if (rnd < 1 - volUjp) 
-                    num_open += 1;
-                    kOpen[randSet(U[j])] = true;
-		elseif (rnd < (1 - volUjp) + (1 - volUj)) 
-                    num_open += 1; 
-                    kOpen[randSet(U[jp])] = true;
-		else
-                    num_open += 2;
-                    kOpen[randSet(U[j])] = true;
-		    kOpen[randSet(U[jp])] = true;
-		end
-	    else
-		rnd = rand();
-		if (get(U, j, 0) == 0) println("Error, $j not in U"); return; end;
-		if (rnd < vol(U[j]))
-                    num_open += 1;                    
-                    kOpen[randSet(U[j])] = true;
-		end
+    best_medoids = Array{Int32};
+    best_distance = typemax(Float64);
+    for iter=1:1000
+        while (true) 
+	    num_open = 0;
+	    for i=1:length(xF)
+	        kOpen[i] = false;
+	    end	   
+            
+	    for key in sort(collect(keys(M)))
+	        Mp = M[key];
+	        j = Mp.j;
+	        jp = Mp.jp;
+	        if (Mp.jp != 0) 
+		    if (get(U, j, 0) == 0) println("Error, $j not in U"); return; end;
+		    if (get(U, jp, 0) == 0) println("Error, $jp not in U"); return; end;
+                    
+		    volUj = vol(U[j]);
+		    volUjp = vol(U[jp]);
+                    
+		    rnd = rand();
+		    if (rnd < 1 - volUjp) 
+                        num_open += 1;
+                        kOpen[randSet(U[j])] = true;
+		    elseif (rnd < (1 - volUjp) + (1 - volUj)) 
+                        num_open += 1; 
+                        kOpen[randSet(U[jp])] = true;
+		    else
+                        num_open += 2;
+                        kOpen[randSet(U[j])] = true;
+		        kOpen[randSet(U[jp])] = true;
+		    end
+	        else
+		    rnd = rand();
+		    if (get(U, j, 0) == 0) println("Error, $j not in U"); return; end;
+		    if (rnd < vol(U[j]))
+                        num_open += 1;                    
+                        kOpen[randSet(U[j])] = true;
+		    end
+	        end
 	    end
-	end
-        
-	# for each facility not in bundle, open independently with probability yi
-	for i=1:length(xF)
-	    if (length(FAllClosest[i]) != 0) continue; end;
-	    rnd = rand();
-	    if (rnd < y[i])
-		kOpen[i] = true;
-		num_open += 1;
+            
+	    # for each facility not in bundle, open independently with probability yi
+	    for i=1:length(xF)
+	        if (length(FAllClosest[i]) != 0) continue; end;
+	        rnd = rand();
+	        if (rnd < y[i])
+		    kOpen[i] = true;
+		    num_open += 1;
+	        end
 	    end
-	end
-        #println(num_open);
-	if (num_open == k) break; end;
+            if (num_open == k) break; end;
+        end
+        
+        medoidsOutput = Dict{Int64, Int64}();
+        for i=1:length(kOpen)
+	    if (kOpen[i]) get!(medoidsOutput, i, i); end
+        end
+        medoids = sort(collect(keys(medoidsOutput)));
+        
+        if (iter == 1) 
+            cost = calculateCost(d, medoids);
+            println("Charikar Single Iteration: ", cost);
+            toc();
+            best_medoids = deepcopy(medoids);
+            best_distance = cost;
+        else
+            cost = calculateCost(d, medoids);
+            if (cost < best_distance)
+                best_distance = cost;
+                best_medoids = deepcopy(medoids);
+            end
+        end
     end
     
     if (DEBUG)
@@ -569,10 +602,5 @@ function charikar2012Variable{T<:Real}(d::DenseMatrix{T}, k::Integer, RMax::Floa
 	    end
 	end
     end
-    
-    medoidsOutput = Dict{Int64, Int64}();
-    for i=1:length(kOpen)
-	if (kOpen[i]) get!(medoidsOutput, i, i); end
-    end
-    medoids = sort(collect(keys(medoidsOutput)));
+    best_medoids;
 end
