@@ -15,7 +15,10 @@ module Medoids
     forwardGreedy, reverseGreedy, _reverseGreedyOpt,
 
     # Linear Programs
-    charikar2012Variable, charikar2012
+    charikar2012Variable, charikar2012,
+    
+    # algorithms created by Brian 
+    forwardGreedyBrian, reverseGreedyBrian
     
     # Source files
     include("utils.jl")

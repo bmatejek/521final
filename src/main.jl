@@ -1,15 +1,20 @@
 using Medoids
 
 # Test parkJun alg on random instance and ORlib instance
-algs = [Medoids.parkJun, Medoids.forwardGreedy, Medoids.reverseGreedy, Medoids.pam]
-names = ["parkJun", "forwardGreedy", "reverseGreedy", "PAM"]
-d = 10
-n = 100
-k = 50
-_, costs = Medoids.randomInstance(d, n)
-Medoids.testInstance(algs, costs, k)
+#algs = [Medoids.parkJun, Medoids.forwardGreedy, Medoids.reverseGreedy, Medoids.pam]
+#names = ["parkJun", "forwardGreedy", "reverseGreedy", "PAM"]
 
-instances = 5
+#d = 10
+#n = 100
+#k = 50
+#_, costs = Medoids.randomInstance(d, n)
+#Medoids.testInstance(algs, costs, k)
+
+algs = [Medoids.charikar2012];
+names = ["charikar2012"];
+
+
+instances = 3
 performance = zeros(1 + length(algs), instances)
 for i = 1:instances
     costs, k, opt = Medoids.loadOrLib("./data/orlib", i)
