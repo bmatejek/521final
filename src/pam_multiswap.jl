@@ -5,7 +5,8 @@ function pamMultiswap{T<:Real}(costs::DenseMatrix{T}, k::Integer)
     nf, nc = size(costs)
     k <= nf || error("Number of medoids should be less than nf")
 
-    collect(swap(costs, build(costs, k)...))
+    P = 2 # set this to try different multiway swaps
+    collect(swap(costs, build(costs, k)..., P))
 end
 
 # BUILD phase
@@ -108,7 +109,7 @@ function swap(costs, orig_medoids::Set{Int}, orig_non_medoids::Set{Int}, P::Int)
 					medoids = deepcopy(orig_medoids)
 					non_medoids = deepcopy(orig_non_medoids)
 					swap_value = 0
-					for i = 1:P
+					for i = 1:p
 						swap_value += calculateSwapValue(costs, medoids, non_medoids, medoid_set[i], new_medoid_set[i])
 						delete!(medoids, medoid_set[i])
 						push!(non_medoids, medoid_set[i])
