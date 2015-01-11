@@ -9,10 +9,13 @@ module Medoids
     parkJun, parkJun!,
 
     # PAM
-    pam, calculateSwapValue,
+    pam, calculateSwapValue, pamMultiswap,
 
     # Greedy
     forwardGreedy, reverseGreedy, _reverseGreedyOpt,
+
+    # Jain Vazirani
+    jv,
 
     # Linear Programs
     charikar2012Variable, charikar2012,
@@ -27,4 +30,6 @@ module Medoids
     include("charikar2012.jl")
     include("pam.jl")
     include("lp.jl")
+    include("jv_v1.jl")
+    include("pam_multiswap.jl")
 end
