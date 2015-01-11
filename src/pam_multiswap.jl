@@ -1,6 +1,6 @@
 # K-medoids implementation based on the commonly used PAM algorithm (Kaufman's original algorithm)
 
-function pam{T<:Real}(costs::DenseMatrix{T}, k::Integer)
+function pamMultiswap{T<:Real}(costs::DenseMatrix{T}, k::Integer)
     # check arguments
     nf, nc = size(costs)
     k <= nf || error("Number of medoids should be less than nf")
