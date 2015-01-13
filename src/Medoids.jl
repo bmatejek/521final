@@ -21,7 +21,10 @@ module Medoids
     charikar2012Variable, charikar2012,
     
     # algorithms created by Brian 
-    forwardGreedyBrian, reverseGreedyBrian
+    forwardGreedyBrian, reverseGreedyBrian,
+
+    # Make PAM terminate after some time
+    pam_timing, pamMultiswap_timing
     
     # Source files
     include("utils.jl")
@@ -32,4 +35,6 @@ module Medoids
     include("lp.jl")
     include("jv.jl")
     include("pam_multiswap.jl")
+    include("pam_multiswap_timing.jl")
+    include("pam_timing.jl")
 end
